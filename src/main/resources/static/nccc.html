@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Micropay</title>
+
+<!-- 引入css -->
+<link rel="stylesheet" type="text/css"
+	href="/count/css/jquery.dataTables.min.css">
+
+<style>
+.dataTables_filter {
+	display: none;
+}
+
+.dataTables_wrapper .dataTable tbody {
+	font-size: x-small;
+}
+
+.dataTables_wrapper .dataTable thead {
+	font-size: x-small;
+}
+
+.dataTables_length, .dataTables_info {
+	font-size: x-small;
+}
+
+.dataTables_paginate a {
+	font-size: x-small;
+}
+
+#search_city, #search_area, #search_store {
+	font-size: small;
+	margin: 5px 3px;
+	padding: 10px;
+	border: 1px solid #ccc;
+	border-radius: 4px;
+	width: 100%;
+	box-sizing: border-box;
+	text-align: center;
+	/* 以下這行是為了在Firefox上正常工作 */
+	text-align-last: center;
+}
+
+#searchButton {
+	margin: 5px 3px;
+	padding: 10px;
+	border: 1px solid #ccc;
+	border-radius: 20px;
+	width: 100%;
+	box-sizing: border-box;
+	background-color: #005082;
+	color: white;
+	cursor: pointer;
+}
+
+#searchButton {
+	margin: 5px 3px;
+	padding: 10px;
+	border: none;
+	border-radius: 20px;
+	width: 100%;
+	box-sizing: border-box;
+	background: #9e2d2d;
+	color: white;
+	cursor: pointer;
+	transition: all 0.2s ease-out;
+	font-weight: bolder;
+	border: none;
+	display: inline-block;
+}
+
+#searchButton:hover {
+	background: #c14343;
+}
+
+@media screen and (min-width: 600px) {
+	#search_city, #search_area, #search_store, #searchButton {
+		width: calc(25% - 10px);
+		display: inline-block;
+	}
+}
+</style>
+</head>
+
+<body>
+	<h1>小額支付</h1>
+	<div class="search-container">
+		<select id="search_city" title="縣市">
+		</select> <select id="search_area" title="鄉鎮市區">
+			<option value="">鄉鎮市區</option>
+		</select> <input type="text" id="search_store" maxlength="5" title="關鍵字" placeholder="關鍵字">
+		<button id="searchButton" title="搜尋">搜尋</button>
+	</div>
+
+	<table border="1" summary="參加本平台之小額支付通路商家資訊" class="display" dir="ltr"
+		id="micropay"
+		style="width: 100%; table-layout: fixed; word-wrap: break-word;">
+		<thead>
+			<tr>
+				<th scope="col">特店代號</th>
+				<th scope="col">登記名稱</th>
+				<th scope="col">特約商店名稱</th>
+				<th scope="col">縣市名稱</th>
+				<th scope="col">營業地址</th>
+				<th scope="col">MCC CODE</th>
+				<th scope="col">小額付款生效日</th>
+				<th scope="col">小額付款結束日</th>
+				<th scope="col">紅利扣抵生效日</th>
+				<th scope="col">紅利扣抵結束日</th>
+				<th scope="col">是否為當月新增</th>
+			</tr>
+		</thead>
+	</table>
+
+	<!--引入JavaScript-->
+	<script type="text/javascript" language="javascript"
+		src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+	<script src="/count/js/jquery.dataTables.min.js"></script>
+
+	<!--初始化-->
+	<script>
+		$(document).ready(
+				function() {
+					var table = $('#micropay').DataTable({
+						language : {
+							lengthMenu : "顯示 _MENU_ 條目",
+							zeroRecords : "找不到符合的紀錄",
+							info : "顯示 _START_ 到 _END_ 共 _TOTAL_ 條目",
+							infoEmpty : "顯示 0 到 0 共 0 條目",
+							infoFiltered : "(從 _MAX_ 總項目中篩選)",
+							paginate : {
+								next : "下一頁",
+								previous : "前一頁",
+							},
+						},
+						columnDefs : [ {
+							targets : [ 0, 1, 5, 6, 7, 8, 9, 10 ],
+							visible : false,
+							searchable : false,
+						},
+			            {
+			                targets: 4, // 假設新的合併欄位還是在位置4 (營業地址的位置)
+			                render: function(data, type, row) {
+			                    // 假設 營業地址市區 是在位置 3 和 營業地址 是在位置 4
+			                    return row[3] + ' ' + row[4];
+			                }
+			            },
+			            {
+			                targets: [3], // 隱藏原來的 "營業地址市區" 欄位
+			                visible: false
+			            }
+						]
+					});
+					
+					function addCitiesFromTableToDropdown() {
+					    // 使用 DataTables API 取得第4欄的所有唯一資料
+					    var matchedData = table.column(3).data().unique().toArray();
+
+					    let citySet = new Set();
+					    matchedData.forEach(data => {
+					        let city = data.substring(0, 3);  // 取得前三個字作為縣市名
+					        citySet.add(city);
+					    });
+
+					    let cityDropdown = $('#search_city');
+					    cityDropdown.empty();
+					    cityDropdown.append('<option value="">縣市</option>');
+
+					    citySet.forEach(city => {
+					        cityDropdown.append($('<option>', {
+					            value: city,
+					            text: city
+					        }));
+					    });
+					}
+
+					// 監聽縣市選單選項變更
+					$('#search_city').on(
+							'change',
+							function() {
+								var city = $(this).val();
+
+								// 清空"鄉鎮市區"
+								$('#search_area').empty().append(
+										'<option value="">鄉鎮市區</option>');
+
+								if (city) {
+									// 使用 DataTables API 搜尋
+									var matchedData = table.column(3).data()
+											.unique().toArray();
+									var districts = [];
+
+									matchedData.forEach(function(address) {
+										if (address.startsWith(city)) {
+											var district = address.replace(
+													city, '').trim();
+											if (!districts.includes(district)) {
+												districts.push(district);
+											}
+										}
+									});
+
+									districts.forEach(function(district) {
+										$('#search_area').append(
+												'<option value="' + district + '">'
+														+ district
+														+ '</option>');
+									});
+								}
+							});
+
+					$('#searchButton').on('click', function() {
+						var search_city = $('#search_city').val().trim();
+						var search_area = $('#search_area').val().trim();
+						var search_store = $('#search_store').val().trim();
+
+						if (search_city && search_area || search_store) {
+							table.draw();
+						} else {
+							alert('請確保已選擇縣市、區域以及輸入關鍵字！');
+						}
+					});
+
+					$.ajax({
+						url : '/IMP2812.csv',
+						type : 'GET',
+						xhrFields : {
+							responseType : 'blob'
+						},
+						success : function(data) {
+							var reader = new FileReader();
+							reader.onload = function(e) {
+								var csvData = e.target.result;
+								var tableData = processData(csvData);
+
+								// 使用 DataTables 的 API 加載資料
+								table.rows.add(tableData).draw();
+								
+								addCitiesFromTableToDropdown();
+								// 自定義搜索
+								$.fn.dataTable.ext.search
+										.push(function(settings, data, dataIndex) {
+											var search_city = $('#search_city').val().trim()
+													.toLowerCase();
+											var search_area = $('#search_area').val().trim()
+													.toLowerCase();
+											var search_store = $('#search_store').val().trim()
+													.toLowerCase();
+
+											if (search_city
+													&& !data[3].toLowerCase().includes(
+															search_city)) {
+												return false;
+											}
+
+											if (search_area
+													&& !data[3].toLowerCase().includes(
+															search_area)) {
+												return false;
+											}
+
+											if (search_store
+													&& !data.join(" ").toLowerCase()
+															.includes(search_store)) {
+												return false;
+											}
+
+											return true;
+										});
+							};
+							reader.readAsText(data, 'big5');
+						},
+						error : function(err) {
+							console.error('Error:', err.statusText);
+						}
+					});
+
+					function processData(csvData) {
+						var csvLines = csvData.split("\n");
+						var csvArray = [];
+
+						for (var i = 1; i < csvLines.length; i++) { // 從第二行開始，因為第一行是標題
+							if (csvLines[i]) {
+								csvArray.push(csvLines[i].split(","));
+							}
+						}
+						return csvArray;
+					}
+
+					// $.ajax({
+					//     url: 'http://10.1.3.48:10039/wps/wcm/connect/1c78bf28-adc2-44c7-8e63-81c354eb9036/IMP2812_1024.csv?MOD=AJPERES&ContentCache=NONE&CACHE=NONE&CACHEID=ROOTWORKSPACE-1c78bf28-adc2-44c7-8e63-81c354eb9036-oJxbSaj',
+					//     type: 'GET',
+					//     xhrFields: {
+					//         responseType: 'blob'
+					//     },
+					//     success: function (data) {
+					//         var reader = new FileReader();
+					//         reader.onload = function (e) {
+					//             var csvData = e.target.result;
+					//             var rows = csvData.split('\n');
+
+					//             var tableData = [];
+
+					//             // 跳過第一行（頭部），因為我們已經在HTML中定義了
+					//             for (var i = 1; i < rows.length; i++) {
+					//                 var rowData = rows[i].split(',');
+					//                 if (rowData.length > 1 || (rowData.length === 1 && rowData[0].trim() !== "")) {  // 新增此檢查
+					//                     tableData.push(rowData);
+					//                 }
+					//             }
+
+					//             // 使用 DataTables 的 API 加載資料
+					//             table.rows.add(tableData).draw();
+					//         };
+					//         reader.readAsText(data, 'big5');
+					//     },
+					//     error: function (err) {
+					//         console.error('Error:', err.statusText);
+					//     }
+					// });
+
+				});
+	</script>
+</body>
+
+</html>

@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: helloworld
+  namespace: rketst
+  labels:
+    workload.user.cattle.io/workloadselector: apps.statefulset-rketst-helloworld
+spec:
+  serviceName: helloworld
+  replicas: 3
+  selector:
+    matchLabels:
+      workload.user.cattle.io/workloadselector: apps.statefulset-rketst-helloworld
+  template:
+    metadata:
+      labels:
+        workload.user.cattle.io/workloadselector: apps.statefulset-rketst-helloworld
+    spec:
+      containers:
+        - name: helloworld
+          image: harbor.vghtpe.gov.tw/poc_test/helloworld:latest
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: TZ
+              value: CST-8
+          envFrom:
+            - secretRef:
+                name: datasource
+          imagePullPolicy: Always
+          volumeMounts:
+            - mountPath: /APData/VGHXXX/helloworld
+              name: vol-helloworld
+          securityContext:
+            allowPrivilegeEscalation: false
+            privileged: false
+            readOnlyRootFilesystem: false
+            runAsNonRoot: false
+      volumes:
+        - name: vol-helloworld
+          nfs:
+            path: /home/nfs-test/VGHXXX/helloworld
+            server: 10.100.130.203
+  volumeClaimTemplates: []
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: helloworld
+  namespace: rketst
+spec:
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+  selector:
+    workload.user.cattle.io/workloadselector: apps.statefulset-rketst-helloworld
+  type: ClusterIP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: helloworld
+  namespace: rketst
+spec:
+  rules:
+    - host: rketst.vghtpe.gov.tw
+      http:
+        paths:
+          - path: /hello
+            pathType: Prefix
+            backend:
+              service:
+                name: helloworld
+                port:
+                  number: 8080
