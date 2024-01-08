@@ -68,7 +68,7 @@ spec:
     - host: rketst.vghtpe.gov.tw
       http:
         paths:
-          - path: /hello
+          - path: /helloworld/hello.html
             pathType: Prefix
             backend:
               service:
