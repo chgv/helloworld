@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: helloworld
-          image: harbor.vghtpe.gov.tw/poc_test/helloworld:latest
+          image: harbor.vghtpe.gov.tw/rketst/helloworld:latest
           ports:
             - name: http
               containerPort: 8080
